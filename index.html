@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentryAI | Violence Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex items-center justify-center p-6">
+
+    <div class="max-w-md w-full bg-slate-800 rounded-2xl shadow-2xl p-8 border border-slate-700">
+        <h1 class="text-3xl font-bold mb-2 text-center bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            SentryAI
+        </h1>
+        <p class="text-slate-400 text-center mb-8 text-sm">Upload video for real-time violence analysis</p>
+
+        <div class="space-y-6">
+            <div id="drop-zone" class="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center hover:border-cyan-500 transition-colors cursor-pointer">
+                <input type="file" id="video-input" class="hidden" accept="video/*">
+                <div class="text-slate-400" id="file-name">
+                    <p>Click to upload or drag & drop</p>
+                    <p class="text-xs mt-2 uppercase">MP4, AVI, MOV</p>
+                </div>
+            </div>
+
+            <button onclick="analyzeVideo()" id="btn-text" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-cyan-900/20">
+                Analyze Video
+            </button>
+        </div>
+
+        <div id="result-container" class="mt-8 hidden animate-in fade-in duration-500">
+            <div id="status-card" class="p-4 rounded-xl text-center font-bold text-lg">
+                <span id="prediction-text">---</span>
+            </div>
+            <div class="mt-4 flex justify-between text-sm text-slate-400 px-2">
+                <span>Confidence:</span>
+                <span id="confidence-score" class="text-white font-mono">0%</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('video-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileNameDisplay = document.getElementById('file-name');
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = () => {
+            if(fileInput.files.length > 0) {
+                fileNameDisplay.innerHTML = `<p class="text-cyan-400 font-medium">${fileInput.files[0].name}</p>`;
+            }
+        };
+
+        async function analyzeVideo() {
+    const fileInput = document.getElementById('video-input');
+    const file = fileInput.files[0];
+    if (!file) return alert("Please select a video!");
+
+    const btn = document.getElementById('btn-text');
+    const resultContainer = document.getElementById('result-container');
+    const statusCard = document.getElementById('status-card');
+    const predText = document.getElementById('prediction-text');
+
+    // UI Feedback
+    btn.disabled = true;
+    btn.innerText = "Processing... (First run takes 2-3 mins)";
+    resultContainer.classList.add('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        console.log("Sending request to backend...");
+        const response = await fetch('http://127.0.0.1:9001/predict', {
+            method: 'POST',
+            body: formData,
+            // No signal/timeout here so the browser waits as long as needed
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            throw new Error(`Server Error: ${response.status} - ${errorBody}`);
+        }
+
+        const data = await response.json();
+        console.log("Prediction Received:", data);
+
+        // Success UI
+        resultContainer.classList.remove('hidden');
+        if (data.is_violent) {
+            predText.innerText = "⚠️ VIOLENCE DETECTED (" + data.confidence + ")";
+            statusCard.className = "p-4 rounded-xl text-center font-bold bg-red-900/30 text-red-400 border border-red-500";
+        } else {
+            predText.innerText = "✅ NORMAL ACTIVITY (" + data.confidence + ")";
+            statusCard.className = "p-4 rounded-xl text-center font-bold bg-emerald-900/30 text-emerald-400 border border-emerald-500";
+        }
+
+    } catch (error) {
+        console.error("Full Error Info:", error);
+        alert("Status: " + error.message + "\nCheck terminal for 200 OK.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Analyze Video";
+    }
+}
+    </script>
+</body>
+</html>
