@@ -5,15 +5,28 @@ import tensorflow as tf
 import numpy as np
 import cv2
 
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/")
+async def test_connection():
+    return {"status": "Backend is reachable on port 9001!"}
 
 import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.applications import MobileNetV2
 
 def build_actual_architecture(seq_len=20, img_size=128):
-    # Load with 'imagenet' weights initially to ensure the structure 
-    # and layer naming match exactly what was in Colab.
     base_cnn = MobileNetV2(
         weights='imagenet', 
         include_top=False, 
@@ -21,7 +34,6 @@ def build_actual_architecture(seq_len=20, img_size=128):
         input_shape=(img_size, img_size, 3)
     )
     
-    # We build the sequential wrapper
     model = models.Sequential([
         layers.Input(shape=(seq_len, img_size, img_size, 3)),
         layers.TimeDistributed(base_cnn),
@@ -31,11 +43,10 @@ def build_actual_architecture(seq_len=20, img_size=128):
         layers.Dense(1, activation='sigmoid')
     ])
     return model
-# Initialize the "Skeleton"
+
 model = build_actual_architecture()
 
-# Load only the "Brains" (the learned weights)
-# Ensure 'bilstm_model_1.h5' is in your Mac folder
+
 model.load_weights('bilstm_model_1.keras')
 
 print("✅ MobileNet-BiLSTM Architecture rebuilt and weights loaded!")
